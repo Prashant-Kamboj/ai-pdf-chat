@@ -1,121 +1,55 @@
 "use client";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { MarkdownMessage } from "./components/MarkdonwMessage";
+import { PDFViewer } from "./components/PDFViewer";
+import { ChatWindow } from "./components/ChatWindow";
+import { SideNav } from "@/components/Sidenav/Sidenav";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { userAuth } from "../auth/context/AuthContext";
 
 export default function ChatPage() {
-  const [prompt, setPrompt] = useState("");
-  const [response, setResponse] = useState<{ type: string; content: string }[]>(
-    []
-  );
-  const [loading, setLoading] = useState(false);
+  const searchParams = useSearchParams();
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!prompt.trim() || loading) return;
-    setPrompt("");
-    setLoading(true);
+  const [activeTab, setActiveTab] = useState("chat");
+  const [pdfFileUrl, setPdfFileUrl] = useState("");
 
-    try {
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: prompt }),
-      });
+  const { session } = userAuth();
 
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
+  const fileParam = searchParams.get("file");
+  const pdfFileName = `${fileParam?.split(".pdf")[0]}.pdf`;
 
-      if (!reader) throw new Error("No response body");
+  console.log(fileParam?.split(".pdf"), "File param from URL");
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const text = decoder.decode(value);
-        const lines = text.split("\n");
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (data === "[DONE]") continue;
+  const fetchpdfFile = async () => {
+    console.log("Fetching PDF file with name:", pdfFileName);
+    const filePublicUrl = supabase.storage
+      .from("pdf")
+      .getPublicUrl(`${session.user.id}/${pdfFileName}`).data.publicUrl;
 
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.content && parsed.type === "ai") {
-                setResponse((prev) => [
-                  ...prev,
-                  { type: "ai", content: parsed.content },
-                ]);
-              }
-              if (parsed.content && parsed.type === "human") {
-                setResponse((prev) => [
-                  ...prev,
-                  { type: "human", content: parsed.content },
-                ]);
-              }
-              if (parsed.error) {
-                setResponse((prev) => [
-                  ...prev,
-                  { type: "Error", content: parsed.error },
-                ]);
-              }
-            } catch {
-              // Skip invalid JSON
-            }
-          }
-        }
-      }
-    } catch (error: any) {
-      setResponse((prev) => [
-        ...prev,
-        { type: "Error", content: error.message || "An error occurred" },
-      ]);
-    } finally {
-      setLoading(false);
+    console.log("Fetched PDF file URL:", filePublicUrl);
+
+    setPdfFileUrl(filePublicUrl);
+  };
+
+  useEffect(() => {
+    if (session?.user?.id && pdfFileName) {
+      fetchpdfFile();
     }
-  }
+  }, [session?.user?.id, pdfFileName]);
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <form onSubmit={handleSubmit} className="flex gap-2 mb-4 items-center">
-        <Textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Ask something..."
-          className="flex-1 border rounded px-3 py-2"
-        />
-        <Button
-          type="submit"
-          disabled={loading}
-          className="text-white px-4 py-2 rounded disabled:opacity-50"
-        >
-          {loading ? "Thinking..." : "Ask"}
-        </Button>
-      </form>
-
-      {response.length > 0 && (
-        <div className="border rounded p-4 whitespace-pre-wrap">
-          {response.map((res, idx) => (
-            <div className="mb-2 flex gap-1" key={idx}>
-              <strong>
-                {res.type === "ai"
-                  ? "AI: "
-                  : res.type === "human"
-                  ? "You:"
-                  : "Error:"}
-              </strong>
-              {res.type === "ai" ? (
-                <div className="flex flex-col">
-                  <MarkdownMessage content={res.content} />
-                </div>
-              ) : (
-                res.content
-              )}
-            </div>
-          ))}
-          {loading && <span className="animate-pulse">▋</span>}
+    <div className="flex h-screen w-full bg-background">
+      <SideNav setActiveTab={setActiveTab} activeTab={activeTab} />
+      <main className="flex-1 overflow-auto">
+        <div className="size-full flex">
+          <div className="w-1/2 h-full">
+            <PDFViewer pdfUrl={pdfFileUrl} />
+          </div>
+          <div className="w-1/2 h-full">
+            <ChatWindow key={pdfFileUrl} />
+          </div>
         </div>
-      )}
+      </main>
     </div>
   );
 }
