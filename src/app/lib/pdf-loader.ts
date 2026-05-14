@@ -1,13 +1,17 @@
-import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
+import { WebPDFLoader } from "@langchain/community/document_loaders/web/pdf";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-import path from "path";
 
-export const getChunkedPDFText = async () => {
+export const getChunkedPDFText = async ({ pdfPath }: { pdfPath: string }) => {
   try {
-    const pdfPath = path.join(process.cwd(), "public", "Answer-17.pdf");
-    const loader = new PDFLoader(pdfPath);
+    const response = await fetch(pdfPath);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch PDF: ${response.statusText}`);
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const loader = new WebPDFLoader(
+      new Blob([arrayBuffer], { type: "application/pdf" })
+    );
     const text = await loader.load();
-
     /*---- Text chunks using langchain ---- */
 
     const textSplitter = new RecursiveCharacterTextSplitter({
@@ -15,10 +19,9 @@ export const getChunkedPDFText = async () => {
       chunkOverlap: 200,
     });
     const chunks = await textSplitter.splitDocuments(text);
-    console.log(chunks, "chunks");
+
     return chunks;
   } catch (error: any) {
-    console.error("Failed to read PDF", error);
     throw new Error("Failed to read PDF");
   }
 };

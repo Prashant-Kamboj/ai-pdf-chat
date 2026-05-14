@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client"
+  output   = "./generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  // url property removed as it is now configured in prisma.config.ts
+}
+
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  createdAt DateTime   @default(now())
+  Documents Document[]
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  name      String
+  filePath  String
+  namespace String
+  processed Boolean  @default(false)
+  pageCount Int?
+  userId    String
+  createdAt DateTime @default(now())
+
+  User User @relation(fields: [userId], references: [id])
+
+  chunks Chunk[] // to store chunks in DB too
+}
+
+model Chunk {
+  id         String   @id @default(uuid())
+  content    String // the raw chunk text
+  chunkIndex Int // 0, 1, 2... order in the document
+  tokenCount Int? // optional
+  createdAt  DateTime @default(now())
+
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
