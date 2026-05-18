@@ -1,12 +1,12 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { Send, FileText } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useSearchParams } from "next/navigation";
 import { MarkdownMessage } from "./MarkdonwMessage";
 
-export function ChatWindow() {
+function ChatWindowContent() {
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -129,5 +129,13 @@ export function ChatWindow() {
         </div>
       </div>
     </div>
+  );
+}
+
+export function ChatWindow() {
+  return (
+    <Suspense>
+      <ChatWindowContent />
+    </Suspense>
   );
 }

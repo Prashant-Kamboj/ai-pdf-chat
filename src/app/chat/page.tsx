@@ -1,13 +1,18 @@
 "use client";
-import { PDFViewer } from "./components/PDFViewer";
+import dynamic from "next/dynamic";
 import { ChatWindow } from "./components/ChatWindow";
+
+const PDFViewer = dynamic(
+  () => import("./components/PDFViewer").then((m) => m.PDFViewer),
+  { ssr: false }
+);
 import { SideNav } from "@/components/Sidenav/Sidenav";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { userAuth } from "../auth/context/AuthContext";
 
-export default function ChatPage() {
+function ChatPageContent() {
   const searchParams = useSearchParams();
 
   const [activeTab, setActiveTab] = useState("chat");
@@ -51,5 +56,13 @@ export default function ChatPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense>
+      <ChatPageContent />
+    </Suspense>
   );
 }

@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { FileText, LogOut, MessageSquare, Upload } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { Document } from "@/app/files/page";
 import { cn } from "@/lib/utils";
 
@@ -14,13 +14,13 @@ const navItems = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
 ];
 
-export const SideNav = ({
+function SideNavContent({
   activeTab,
   setActiveTab,
 }: {
   activeTab: string;
   setActiveTab: (val: string) => void;
-}) => {
+}) {
   const router = useRouter();
 
   const { session } = userAuth();
@@ -149,4 +149,16 @@ export const SideNav = ({
       </div>
     </aside>
   );
-};
+}
+
+export const SideNav = ({
+  activeTab,
+  setActiveTab,
+}: {
+  activeTab: string;
+  setActiveTab: (val: string) => void;
+}) => (
+  <Suspense>
+    <SideNavContent activeTab={activeTab} setActiveTab={setActiveTab} />
+  </Suspense>
+);
